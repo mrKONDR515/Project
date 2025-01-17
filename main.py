@@ -1,12 +1,14 @@
 import pygame
 import sys
 import os
+import time
 
 pygame.init()
 size = WIDTH, HEIGHT = 900, 600
 screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
 FPS = 50
+start_time = time.time()
 
 
 def load_image(name, colorkey=None):
@@ -38,14 +40,26 @@ def load_level(filename):
 
 
 tile_images = {
-    'flower': load_image('flower.jpg'),
-    'empty': load_image('grass.png')
+    'flower': load_image('flower1.png'),
+    'flower-wint': load_image('flower-wilt1.png'),
+    'fangflower': load_image('fangflower1.png'),
+    'empty': load_image('grass02.png'),
+    'life': load_image('life-count1.png'),
+    'timeee': load_image('white-fon.jpg')
+
 }
 
 tile_width = tile_height = 50
 tiles_group = pygame.sprite.Group()
 all_sprites = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
+
+
+def time_elapsed():
+    time_elapsed = int(time.time() - start_time)
+    font = pygame.font.SysFont('Arial Black', 25)
+    text_surface = font.render("Garden happy for: " + str(time_elapsed) + " seconds", True, (0, 80, 0))
+    screen.blit(text_surface, (10, 5))
 
 
 class Tile(pygame.sprite.Sprite):
@@ -59,7 +73,7 @@ class Tile(pygame.sprite.Sprite):
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(player_group, all_sprites)
-        self.image = load_image('cow.jpg', -1)
+        self.image = load_image('cow.png')
         self.rect = self.image.get_rect().move(
             tile_width * pos_x + 15, tile_height * pos_y + 5)
         self.pos = (pos_x, pos_y)
@@ -74,8 +88,12 @@ def generate_level(level):
     new_player, x, y = None, None, None
     for y in range(len(level)):
         for x in range(len(level[y])):
-            if level[y][x] == '.':
+            if level[y][x] == '%':
+                Tile('timeee', x, y)
+            elif level[y][x] == '.':
                 Tile('empty', x, y)
+            elif level[y][x] == '$':
+                Tile('life', x, y)
             elif level[y][x] == '#':
                 Tile('flower', x, y)
             elif level[y][x] == '@':
@@ -91,7 +109,7 @@ def move_player(player, direction):
         if y > 0 and level[y - 1][x] in ['.', '@']:
             player.move(x, y - 1)
     elif direction == 'down':
-        if y < level_y - 1 and level[y + 1][x] in ['.', '@']:
+        if y < level_y  and level[y + 1][x] in ['.', '@']:
             player.move(x, y + 1)
     elif direction == 'left':
         if x > 0 and level[y][x - 1] in ['.', '@']:
@@ -107,7 +125,7 @@ def terminate():
 
 
 def start_screen():
-    intro_text = ["ЗАСТАВКА", "",
+    intro_text = ["HAPPY GARDEN", "",
                   "Правила игры",
                   "Если в правилах несколько строк,",
                   "приходится выводить их построчно"]
@@ -136,7 +154,7 @@ def start_screen():
         clock.tick(FPS)
 
 
-level = load_level('map1.txt')
+level = load_level('map3.txt')
 player, level_x, level_y = generate_level(level)
 start_screen()
 running = True
@@ -156,6 +174,7 @@ while running:
                 move_player(player, 'right')
     screen.fill(pygame.Color('black'))
     all_sprites.draw(screen)
+    time_elapsed()
     player_group.draw(screen)
     pygame.display.flip()
     clock.tick(FPS)
