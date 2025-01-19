@@ -77,11 +77,27 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(
             tile_width * pos_x + 15, tile_height * pos_y + 5)
         self.pos = (pos_x, pos_y)
+        self.cow = 'cow.png'
+        self.water = 'cow-water.png'
+        self.cur_img = self.cow
 
     def move(self, x, y):
         self.pos = (x, y)
         self.rect = self.image.get_rect().move(
             tile_width * self.pos[0] + 15, tile_height * self.pos[1] + 5)
+
+    def change_image(self):
+        if self.cur_img == self.cow:
+            self.cur_img = self.water
+        else:
+            self.cur_img = self.cow
+        self.image = load_image(self.cur_img)
+
+
+class Flower(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y):
+        super().__init__(player_group, all_sprites)
+        pass
 
 
 def generate_level(level):
@@ -109,7 +125,7 @@ def move_player(player, direction):
         if y > 0 and level[y - 1][x] in ['.', '@']:
             player.move(x, y - 1)
     elif direction == 'down':
-        if y < level_y  and level[y + 1][x] in ['.', '@']:
+        if y < level_y and level[y + 1][x] in ['.', '@']:
             player.move(x, y + 1)
     elif direction == 'left':
         if x > 0 and level[y][x - 1] in ['.', '@']:
@@ -126,20 +142,21 @@ def terminate():
 
 def start_screen():
     intro_text = ["HAPPY GARDEN", "",
-                  "Правила игры",
-                  "Если в правилах несколько строк,",
-                  "приходится выводить их построчно"]
+                  "Правила игры:",
+                  "-",
+                  "-"]
 
-    fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
+    fon = pygame.transform.scale(load_image('f1.png'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
-    font = pygame.font.Font(None, 30)
+    font = pygame.font.SysFont('Georgia', 33)
     text_coord = 50
+
     for line in intro_text:
-        string_rendered = font.render(line, 1, pygame.Color('black'))
+        string_rendered = font.render(line, 1, pygame.Color(255, 250, 220))
         intro_rect = string_rendered.get_rect()
         text_coord += 10
         intro_rect.top = text_coord
-        intro_rect.x = 10
+        intro_rect.x = 20
         text_coord += intro_rect.height
         screen.blit(string_rendered, intro_rect)
 
@@ -149,7 +166,7 @@ def start_screen():
                 terminate()
             elif event.type == pygame.KEYDOWN or \
                     event.type == pygame.MOUSEBUTTONDOWN:
-                return  # начинаем игру
+                return
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -172,6 +189,10 @@ while running:
                 move_player(player, 'left')
             if event.key == pygame.K_RIGHT:
                 move_player(player, 'right')
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    player.change_image()
+
     screen.fill(pygame.Color('black'))
     all_sprites.draw(screen)
     time_elapsed()
