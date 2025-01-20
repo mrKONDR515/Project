@@ -7,13 +7,14 @@ pygame.init()
 size = WIDTH, HEIGHT = 900, 600
 screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
+wilted_time = 10
+happy_garden_time = 15
 FPS = 50
-start_time = time.time()
+
 
 
 def load_image(name, colorkey=None):
     fullname = os.path.join('data', name)
-    # если файл не существует, то выходим
     if not os.path.isfile(fullname):
         print(f"Файл с изображением '{fullname}' не найден")
         sys.exit()
@@ -30,12 +31,9 @@ def load_image(name, colorkey=None):
 
 def load_level(filename):
     filename = "data/" + filename
-    # читаем уровень, убирая символы перевода строки
     with open(filename, 'r') as mapFile:
         level_map = [line.strip() for line in mapFile]
-    # и подсчитываем максимальную длину
     max_width = max(map(len, level_map))
-    # дополняем каждую строку пустыми клетками ('.')
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
@@ -55,7 +53,7 @@ all_sprites = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 
 
-def time_elapsed():
+def time_elapsed(start_time):
     time_elapsed = int(time.time() - start_time)
     font = pygame.font.SysFont('Arial Black', 25)
     text_surface = font.render("Garden happy for: " + str(time_elapsed) + " seconds", True, (0, 80, 0))
@@ -97,6 +95,14 @@ class Player(pygame.sprite.Sprite):
 class Flower(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(player_group, all_sprites)
+        self.image = load_image('flower1.png')
+        pass
+
+
+class FangFlower(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y):
+        super().__init__(player_group, all_sprites)
+        self.image = load_image('fangflower1.png')
         pass
 
 
@@ -115,7 +121,6 @@ def generate_level(level):
             elif level[y][x] == '@':
                 Tile('empty', x, y)
                 new_player = Player(x, y)
-    # вернем игрока, а также размер поля в клетках
     return new_player, x, y
 
 
@@ -140,21 +145,38 @@ def terminate():
     sys.exit()
 
 
+def mutate():
+    pass
+
+
 def start_screen():
-    intro_text = ["HAPPY GARDEN", "",
+    intro_text = ["HAPPY GARDEN",
                   "Правила игры:",
-                  "-",
-                  "-"]
+                  "1. Игра начинается с появления коровы и цветка в саду.",
+                  "2. Каждые 10 секунд в саду имеющийся ",
+                  "    цветок начинает увядать.",
+                  "3. Чтобы перемещать корову к увядшему цветку, ",
+                  "     используйте клавиши со стрелками.",
+                  "4. Чтобы полить цветок, игрок должен нажать ",
+                  "     клавишу пробел.",
+                  "5. Если какой-либо цветок остается увядшим более",
+                  "     10 секунд, игра заканчивается.",
+                  "6. Если сад счастлив более 15 секунд, один из цветов ",
+                  "     мутирует в клыкоцвет и пытается задушить корову.",
+                  "7. Игра заканчивается, если:",
+                  "    - Любой цветок остается увядшим более 10 секунд.",
+                  "    - Корову 5 раз атакует клыкоцветок.",
+                  "8. Цель игры: полить как можно больше цветов."]
 
     fon = pygame.transform.scale(load_image('f1.png'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
-    font = pygame.font.SysFont('Georgia', 33)
+    font = pygame.font.SysFont('Georgia', 15, 2)
     text_coord = 50
 
     for line in intro_text:
-        string_rendered = font.render(line, 1, pygame.Color(255, 250, 220))
+        string_rendered = font.render(line, 1, pygame.Color(255, 250, 230))
         intro_rect = string_rendered.get_rect()
-        text_coord += 10
+        text_coord += 6
         intro_rect.top = text_coord
         intro_rect.x = 20
         text_coord += intro_rect.height
@@ -174,6 +196,8 @@ def start_screen():
 level = load_level('map3.txt')
 player, level_x, level_y = generate_level(level)
 start_screen()
+start_time = time.time()
+time_elapsed(start_time)
 running = True
 while running:
     for event in pygame.event.get():
@@ -181,6 +205,7 @@ while running:
             running = False
             terminate()
         if event.type == pygame.KEYDOWN:
+            time_elapsed()
             if event.key == pygame.K_UP:
                 move_player(player, 'up')
             if event.key == pygame.K_DOWN:
@@ -189,13 +214,12 @@ while running:
                 move_player(player, 'left')
             if event.key == pygame.K_RIGHT:
                 move_player(player, 'right')
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    player.change_image()
+            if event.key == pygame.K_SPACE:
+                player.change_image()
 
     screen.fill(pygame.Color('black'))
     all_sprites.draw(screen)
-    time_elapsed()
+    time_elapsed(start_time)
     player_group.draw(screen)
     pygame.display.flip()
     clock.tick(FPS)
