@@ -1,7 +1,8 @@
-import pygame
-import sys
 import os
+import sys
 import time
+
+import pygame
 
 pygame.init()
 size = WIDTH, HEIGHT = 900, 600
@@ -9,7 +10,11 @@ screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
 wilted_time = 10
 happy_garden_time = 15
+player_lives = 5
 FPS = 50
+
+level_files = ['map1.txt', 'map2.txt', 'map3.txt']
+current_level_index = 0
 
 
 def load_image(name, colorkey=None):
@@ -36,12 +41,28 @@ def load_level(filename):
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
+def load_next_level():
+    global player, level, level_x, level_y, flowers, start_time, current_level_index, player_lives
+    current_level_index += 1
+    if current_level_index >= len(level_files):
+        display_message("Поздравляем, вы прошли все уровни!")
+        terminate()
+    all_sprites.empty()
+    tiles_group.empty()
+    player_group.empty()
+    flowers.clear()
+    level = load_level(level_files[current_level_index])
+    flowers = []
+    player, level_x, level_y = generate_level(level)
+    start_time = time.time()
+    player_lives = 5
+
+
 tile_images = {
     'flower': load_image('flower1.png'),
     'flower-wilt': load_image('flower-wilt1.png'),
     'fangflower': load_image('fangflower1.png'),
     'empty': load_image('grass02.png'),
-    'life': load_image('life-count1.png'),
     'timeee': load_image('white-fon.jpg')
 }
 
@@ -66,6 +87,13 @@ def score():
     font = pygame.font.SysFont('Arial Black', 25)
     text_surface = font.render("Score: " + str(elapsed_time), True, (199, 21, 133))
     screen.blit(text_surface, (450, 5))
+
+
+def display_lives():
+    for i in range(player_lives):
+        x = 600 + i * 50  # Расстояние между сердцами
+        y = 0
+        screen.blit(load_image('life-count1.png'), (x, y))
 
 
 class Tile(pygame.sprite.Sprite):
@@ -118,6 +146,7 @@ class Flower(pygame.sprite.Sprite):
         super().__init__(player_group, all_sprites)
         self.image = load_image('flower1.png')
         self.rect = self.image.get_rect().move(tile_width * pos_x, tile_height * pos_y)
+        self.pos = (pos_x, pos_y)
         self.wilted = False
         self.wilted_start_time = None
         self.last_watered_time = None
@@ -145,6 +174,8 @@ class FangFlower(Flower):
     def __init__(self, pos_x, pos_y):
         super().__init__(pos_x, pos_y)
         self.image = load_image('fangflower1.png')
+        self.rect = self.image.get_rect().move(tile_width * pos_x, tile_height * pos_y)
+        self.pos = (pos_x, pos_y)
 
 
 def generate_level(level):
@@ -156,7 +187,7 @@ def generate_level(level):
             elif level[y][x] == '.':
                 Tile('empty', x, y)
             elif level[y][x] == '$':
-                Tile('life', x, y)
+                Tile('timeee', x, y)
             elif level[y][x] == '#':
                 flower = Flower(x, y)
                 flowers.append(flower)
@@ -181,6 +212,10 @@ def move_player(player, direction):
         if x < level_x - 1 and level[y][x + 1] in ['.', '@']:
             player.move(x + 1, y)
 
+    for flower in flowers:
+        if (x, y) == flower.pos:
+            return
+
 
 def terminate():
     pygame.quit()
@@ -191,7 +226,7 @@ def start_screen():
     intro_text = ["HAPPY GARDEN",
                   "Правила игры:",
                   "1. Игра начинается с появления коровы и цветка в саду.",
-                  "2. Каждые 10 секунд в саду имеющийся ",
+                  "2. Каждые 5 секунд в саду имеющийся ",
                   "    цветок начинает увядать.",
                   "3. Чтобы перемещать корову к увядшему цветку, ",
                   "     используйте клавиши со стрелками.",
@@ -231,7 +266,7 @@ def start_screen():
 
 
 def display_message(message):
-    font = pygame.font.Font(None, 20)
+    font = pygame.font.Font(None, 30)
     text = font.render(message, True, (255, 255, 255))
     text_rect = text.get_rect(center=(400, 300))
     screen.blit(text, text_rect)
@@ -252,21 +287,34 @@ while running:
         if flower.wilted:
             if time_elapsed(flower.wilted_start_time) > wilted_time:
                 display_message("Игра окончена: цветок увял слишком долго!")
-                terminate()
+                pygame.time.delay(2000)
+                load_next_level()
         else:
-            if elapsed_time % 8 == 0 and elapsed_time > 0:
+            if elapsed_time % 5 == 0 and elapsed_time > 0:
                 flower.wilt()
 
-    if elapsed_time > happy_garden_time and not any(isinstance(flower, FangFlower) for flower in flowers):
-        fang_flower = FangFlower(flowers[0].pos[0], flowers[0].pos[1])
-        flowers[0].kill()
-        flowers.append(fang_flower)
-        print("Цветок мутировал в клыкоцвет!")
+    if elapsed_time > happy_garden_time + 5:
+        if all(not flower.wilted for flower in flowers):
+            for flower in flowers[:]:
+                if not isinstance(flower, FangFlower):
+                    fang_flower = FangFlower(flower.pos[0], flower.pos[1])
+                    flower.kill()
+                    flowers.remove(flower)
+                    flowers.append(fang_flower)
+                    print(f"Цветок на позиции {flower.pos} мутировал в клыкоцвет!")
 
     for flower in flowers:
-        if isinstance(flower, FangFlower) and player.rect.colliderect(flower.rect):
-            display_message("Игра окончена: корова была задушена клыкоцветом!")
-            terminate()
+        if isinstance(flower, FangFlower):
+            fx, fy = flower.pos
+            px, py = player.pos
+            if abs(fx - px) <= 1 or abs(fy - py) <= 1:
+                player_lives -= 1
+                print(f"Клыкоцвет атаковал корову! Осталось жизней: {player_lives}")
+                if player_lives <= 0:
+                    display_message("Переход на следующий уровень...")
+                    pygame.time.delay(2000)
+                    load_next_level()
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -290,6 +338,7 @@ while running:
     screen.fill(pygame.Color('black'))
     all_sprites.draw(screen)
     time_elapsed(start_time)
+    display_lives()
     score()
     player_group.draw(screen)
     pygame.display.flip()
