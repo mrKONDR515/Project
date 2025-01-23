@@ -12,6 +12,7 @@ wilted_time = 10
 happy_garden_time = 15
 player_lives = 5
 FPS = 50
+score_count = 0
 
 level_files = ['map1.txt', 'map2.txt', 'map3.txt']
 current_level_index = 0
@@ -99,7 +100,7 @@ def time_elapsed(start_time):
 def score():
     elapsed_time = 0
     font = pygame.font.SysFont('Arial Black', 25)
-    text_surface = font.render("Score: " + str(elapsed_time), True, (199, 21, 133))
+    text_surface = font.render("Score: " + str(score_count), True, (199, 21, 133))
     screen.blit(text_surface, (450, 5))
 
 
@@ -351,6 +352,7 @@ while running:
                 flower_to_water = player.can_water_flower()
                 if flower_to_water:
                     flower_to_water.water()
+                    score_count += 1
                     break
 
     screen.fill(pygame.Color('black'))
