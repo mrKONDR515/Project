@@ -12,7 +12,6 @@ wilted_time = 10
 happy_garden_time = 15
 player_lives = 5
 FPS = 50
-count_score = 0
 
 level_files = ['map1.txt', 'map2.txt', 'map3.txt']
 current_level_index = 0
@@ -59,6 +58,20 @@ def load_next_level():
     player_lives = 5
 
 
+def reset_level():
+    global start_time
+    for flower in flowers:
+        if isinstance(flower, FangFlower):
+            flower.kill()
+            flowers.remove(flower)
+            new_flower = Flower(flower.pos[0], flower.pos[1])
+            flowers.append(new_flower)
+
+    start_time = time.time()
+
+    player.move(*player.start_pos)
+
+
 tile_images = {
     'flower': load_image('flower1.png'),
     'flower-wilt': load_image('flower-wilt1.png'),
@@ -84,8 +97,9 @@ def time_elapsed(start_time):
 
 
 def score():
+    elapsed_time = 0
     font = pygame.font.SysFont('Arial Black', 25)
-    text_surface = font.render("Score: " + str(count_score), True, (199, 21, 133))
+    text_surface = font.render("Score: " + str(elapsed_time), True, (199, 21, 133))
     screen.blit(text_surface, (450, 5))
 
 
@@ -109,6 +123,7 @@ class Player(pygame.sprite.Sprite):
         self.image = load_image('cow.png')
         self.rect = self.image.get_rect().move(tile_width * pos_x + 15, tile_height * pos_y + 5)
         self.pos = (pos_x, pos_y)
+        self.start_pos = (pos_x, pos_y)
         self.cow = 'cow.png'
         self.water = 'cow-water.png'
         self.cur_img = self.cow
@@ -307,10 +322,13 @@ while running:
         if isinstance(flower, FangFlower):
             fx, fy = flower.pos
             px, py = player.pos
-            if abs(fx - px) <= 1 or abs(fy - py) <= 1:
+            if abs(fx - px) <= 1 and abs(fy - py) <= 1:
                 player_lives -= 1
                 print(f"Клыкоцвет атаковал корову! Осталось жизней: {player_lives}")
-                if player_lives <= 0:
+                player.move(7, 8)
+                if player_lives > 0:
+                    reset_level()
+                else:
                     display_message("Переход на следующий уровень...")
                     pygame.time.delay(2000)
                     load_next_level()
@@ -333,7 +351,6 @@ while running:
                 flower_to_water = player.can_water_flower()
                 if flower_to_water:
                     flower_to_water.water()
-                    count_score += 1
                     break
 
     screen.fill(pygame.Color('black'))
