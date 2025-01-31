@@ -1,8 +1,10 @@
 import os
+import sqlite3
 import sys
 import time
 
 import pygame
+import pygame_textinput
 
 pygame.init()
 size = WIDTH, HEIGHT = 900, 600
@@ -43,10 +45,10 @@ def load_level(filename):
 
 
 def load_next_level():
-    global player, level, level_x, level_y, flowers, start_time, current_level_index, player_lives
+    global player, level, level_x, level_y, flowers, start_time, current_level_index, player_lives, initial_start_time
     current_level_index += 1
     if current_level_index >= len(level_files):
-        display_message("Поздравляем, вы прошли все уровни!")
+        display_final_screen(player_db, score_count)
         terminate()
     all_sprites.empty()
     tiles_group.empty()
@@ -56,6 +58,7 @@ def load_next_level():
     flowers = []
     player, level_x, level_y = generate_level(level)
     start_time = time.time()
+    initial_start_time = time.time()
     player_lives = 5
 
 
@@ -71,6 +74,67 @@ def reset_level():
     start_time = time.time()
 
     player.move(*player.start_pos)
+
+
+def save_player():
+    font = pygame.font.SysFont("Consolas", 30)
+    text_surface = font.render("Введите имя:", True, (50, 50, 50))
+    textinput = pygame_textinput.TextInputVisualizer()
+
+    while True:
+        screen.fill((180, 220, 180))
+        events = pygame.event.get()
+
+        screen.blit(text_surface, (WIDTH // 2 - 100, 50))
+        textinput.update(events)
+        screen.blit(textinput.surface, (WIDTH // 2 - 100, 100))
+
+        for event in events:
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                name = textinput.value.strip()
+                if name:
+                    return name
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def score_db(name, score):
+    con = sqlite3.connect('data/score.sqlite')
+    cur = con.cursor()
+    line = 'insert into Score_(name, score) values (?,?)'
+    cur.execute(line, (name, score))
+    con.commit()
+
+
+def display_final_screen(name, score):
+    score_db(name, score)
+    font = pygame.font.SysFont("Consolas", 40)
+    text_surface = font.render(f"Игрок: {name}", True, (50, 50, 50))
+    score_surface = font.render(f"Счет: {score}", True, (50, 50, 50))
+
+    while True:
+        screen.fill((200, 200, 250))
+        screen.blit(text_surface, (WIDTH // 2 - text_surface.get_width() // 2, 200))
+        screen.blit(score_surface, (WIDTH // 2 - score_surface.get_width() // 2, 250))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                return
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def check_game_time(initial_start_time):
+    if time.time() - initial_start_time >= 60:
+        display_message("Время вышло! Игра окончена.")
+        pygame.time.delay(2000)
+        load_next_level()
 
 
 tile_images = {
@@ -292,8 +356,10 @@ def display_message(message):
 level = load_level('map1.txt')
 player, level_x, level_y = generate_level(level)
 start_screen()
+player_db = save_player()
 start_time = time.time()
 time_elapsed(start_time)
+initial_start_time = time.time()
 
 running = True
 while running:
@@ -362,4 +428,5 @@ while running:
     score()
     player_group.draw(screen)
     pygame.display.flip()
+    check_game_time(initial_start_time)
     clock.tick(FPS)
